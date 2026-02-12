@@ -14,8 +14,15 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
+# react-native-permissions configuration
+permissions_path = '../node_modules/react-native-permissions/ios'
+
 target 'WebViewApp' do
   config = use_native_modules!
+
+  # Permissions pods
+  pod 'Permission-Camera', :path => "#{permissions_path}/Camera"
+  pod 'Permission-Microphone', :path => "#{permissions_path}/Microphone"
 
   use_react_native!(
     :path => config[:reactNativePath],

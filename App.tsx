@@ -1,118 +1,99 @@
 /**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
+ * WebView App with Camera & Microphone Permissions
+ * React Native App for iOS and Android
  */
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {StatusBar, Platform, PermissionsAndroid, Alert} from 'react-native';
+import {NavigationContainer} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import HomeScreen from './src/components/HomeScreen';
+import WebViewScreen from './src/components/WebViewScreen';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+// Navigation types
+type RootStackParamList = {
+  Home: undefined;
+  WebView: {url: string};
+};
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Request initial Android permissions on app start
+const requestAndroidPermissions = async () => {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  try {
+    const permissions = [
+      PermissionsAndroid.PERMISSIONS.CAMERA,
+      PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+    ];
+
+    const results = await PermissionsAndroid.requestMultiple(permissions);
+
+    const allGranted = Object.values(results).every(
+      result => result === PermissionsAndroid.RESULTS.GRANTED,
+    );
+
+    if (!allGranted) {
+      Alert.alert(
+        'Permissions Notice',
+        'Camera and microphone permissions are needed for full functionality. You can enable them in Settings.',
+        [{text: 'OK'}],
+      );
+    }
+  } catch (error) {
+    console.error('Error requesting permissions:', error);
+  }
+};
 
 function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+  useEffect(() => {
+    // Request permissions when app starts on Android
+    requestAndroidPermissions();
+  }, []);
 
   return (
-    <SafeAreaView style={backgroundStyle}>
+    <SafeAreaProvider>
       <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+        barStyle="dark-content"
+        backgroundColor="#f5f7fa"
+        translucent={false}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
+      <NavigationContainer>
+        <Stack.Navigator
+          initialRouteName="Home"
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
           }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          <Stack.Screen name="Home">
+            {({navigation}) => (
+              <HomeScreen
+                onNavigateToWebView={(url: string) => {
+                  setCurrentUrl(url);
+                  navigation.navigate('WebView', {url});
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="WebView">
+            {({navigation, route}) => (
+              <WebViewScreen
+                url={route.params?.url || currentUrl || ''}
+                onGoBack={() => navigation.goBack()}
+              />
+            )}
+          </Stack.Screen>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
 
 export default App;
